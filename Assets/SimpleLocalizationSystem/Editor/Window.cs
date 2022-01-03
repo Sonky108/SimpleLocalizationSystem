@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using SimpleLocalizationSystem.Editor.Utils;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
@@ -9,143 +11,171 @@ namespace SimpleLocalizationSystem.Editor
 {
 	public class Window : EditorWindow
 	{
-		private readonly Color _darkerColor = Color.white * 0.1f;
-		private readonly Color _lighterColor = Color.white * 0.3f;
-		private List<MultiColumnHeaderState.Column> _columns = new List<MultiColumnHeaderState.Column>();
+		private readonly List<MultiColumnHeaderState.Column> _columns = new List<MultiColumnHeaderState.Column>();
 		private MultiColumnHeader _multiColumnHeader;
 		private MultiColumnHeaderState _multiColumnHeaderState;
 		private Vector2 _scrollPosition;
+		private SearchField _searchBar;
+		private string _searchText;
+		private IWindowSkin _skin;
 		public Backend Backend;
-
-		public void Start()
-		{
-			_columns.Add(new MultiColumnHeaderState.Column
-			{
-				autoResize = true,
-				minWidth = 50,
-				canSort = true,
-				sortingArrowAlignment = TextAlignment.Right,
-				headerTextAlignment = TextAlignment.Left,
-				headerContent = new GUIContent("Key")
-			});
-			
-			foreach (var x in Backend._localeFileByCultureInfo)
-			{
-				_columns.Add(new MultiColumnHeaderState.Column
-				{
-					autoResize = true,
-					minWidth = 50,
-					canSort = true,
-					sortingArrowAlignment = TextAlignment.Right,
-					headerTextAlignment = TextAlignment.Left,
-					headerContent = new GUIContent(x.Key.TwoLetterISOLanguageName)
-				});
-			}
-			
-			this._multiColumnHeaderState = new MultiColumnHeaderState(_columns.ToArray());
-
-			this._multiColumnHeader = new MultiColumnHeader(state: this._multiColumnHeaderState);
-
-			// When we chagne visibility of the column we resize columns to fit in the window.
-			this._multiColumnHeader.visibleColumnsChanged += (multiColumnHeader) => multiColumnHeader.ResizeToFit();
-
-			// Initial resizing of the content.
-			this._multiColumnHeader.ResizeToFit();
-		}
 
 		private void OnGUI()
 		{
-			//EditorGUILayout.TextArea(Backend.LocaleFilesCount.ToString());
+			Rect windowRect = new Rect {x = 0, y = 0, width = position.width, height = position.height};
 
-			GUILayout.FlexibleSpace();
-			Rect windowRect = GUILayoutUtility.GetLastRect();
+			DrawToolbar(ref windowRect);
+			DrawLocaleScrollArea(ref windowRect);
+		}
 
-			windowRect.width = position.width;
-			windowRect.height = position.height;
+		private void DrawToolbar(ref Rect rect)
+		{
+			Rect toolBarRect = new Rect(rect) {height = EditorGUIUtility.singleLineHeight};
 
+			_searchText = _searchBar.OnToolbarGUI(toolBarRect, _searchText);
+
+			UseMainRectHeight(ref rect, toolBarRect.height);
+		}
+
+		private void DrawLocaleScrollArea(ref Rect rect)
+		{
 			float columnHeight = EditorGUIUtility.singleLineHeight;
 
-			Rect columnRectPrototype = new Rect(windowRect)
+			//header
+			Rect columnRectPrototype = new Rect(rect)
 			{
-				height = columnHeight, // This is basically a height of each column including header.
+				height = columnHeight,
 			};
 
-			// Just enormously large view if you want it to span for the whole window. This is how it works [shrugs in confusion].
-			Rect positionalRectAreaOfScrollView = GUILayoutUtility.GetRect(0, float.MaxValue, 0, float.MaxValue);
+			_multiColumnHeader.OnGUI(columnRectPrototype, _scrollPosition.x);
 
-			// Create a `viewRect` since it should be separate from `rect` to avoid circular dependency.
-			Rect viewRect = new Rect(windowRect)
+			UseMainRectHeight(ref rect, columnRectPrototype.height);
+
+			int visibleRows = -1;
+
+			Rect viewRect = new Rect(rect)
 			{
-				xMax = _columns.Sum(column => column.width) // Scroll max on X is basically a sum of width of columns.
+				width = _columns.Sum(column => column.width), 
+				height = Backend.Keys.Count * EditorGUIUtility.singleLineHeight
 			};
 
-			_scrollPosition = GUI.BeginScrollView(positionalRectAreaOfScrollView, _scrollPosition, viewRect, false, false);
+			_scrollPosition = GUI.BeginScrollView(rect, _scrollPosition, viewRect);
 
-			// Draw header for columns here.
-			_multiColumnHeader.OnGUI(columnRectPrototype, 0.0f);
-
-			int languange = -1;
-			// For each element that we have in object that we are modifying.
-			//? I don't have an appropriate object here to modify, but this is just an example. In real world case I would probably use ScriptableObject here.
-			for (int a = 0; a < this.Backend.Keys.Count; a++)
+			foreach (string key in Backend.Keys)
 			{
-				languange++;
-				
-				Rect rowRect = new Rect(columnRectPrototype);
+				var isRowVisible = Backend.Languages.All(x => IsRowVisible(key, x, Backend.Data[x].Data[key]));
 
-				rowRect.y += columnHeight * (a + 1);
-
-				// Draw a texture before drawing each of the fields for the whole row.
-				if (a % 2 == 0)
+				if (isRowVisible)
 				{
-					EditorGUI.DrawRect(rowRect, _darkerColor);
+					visibleRows++;
 				}
 				else
 				{
-					EditorGUI.DrawRect(rowRect, _lighterColor);
+					continue;
 				}
+				
+				Rect rowRect = new Rect(columnRectPrototype);
 
-				// Name field.
+				rowRect.y += columnHeight * (visibleRows + 1);
+
+				EditorGUI.DrawRect(rowRect, visibleRows % 2 == 0 ? _skin.DarkRowBackground : _skin.LightRowBackground);
 
 				int columnIndex = 0;
 
 				if (_multiColumnHeader.IsColumnVisible(columnIndex))
 				{
-					int visibleColumnIndex = _multiColumnHeader.GetVisibleColumnIndex(columnIndex);
-
-					Rect columnRect = _multiColumnHeader.GetColumnRect(visibleColumnIndex);
-
-					columnRect.y = rowRect.y;
-
-					GUIStyle nameFieldGUIStyle = new GUIStyle(GUI.skin.label) {padding = new RectOffset(10, 10, 2, 2)};
-
-					EditorGUI.LabelField(_multiColumnHeader.GetCellRect(visibleColumnIndex, columnRect), new GUIContent(Backend.Keys[a]), nameFieldGUIStyle);
-					columnIndex++;
+					DrawCell(columnIndex, rowRect, new GUIContent(key));
 				}
 
+				columnIndex++;
 
-				foreach (var x in Backend.Languages)
+				foreach (CultureInfo x in Backend.Languages)
 				{
 					if (_multiColumnHeader.IsColumnVisible(columnIndex))
 					{
-						int visibleColumnIndex = _multiColumnHeader.GetVisibleColumnIndex(columnIndex);
-
-						Rect columnRect = _multiColumnHeader.GetColumnRect(visibleColumnIndex);
-
-						// This here basically is a row height, you can make it any value you like. Or you could calculate the max field height here that your object has and store it somewhere then use it here instead of `EditorGUIUtility.singleLineHeight`.
-						// We move position of field on `y` by this height to get correct position.
-						columnRect.y = rowRect.y;
-
-						GUIStyle nameFieldGUIStyle = new GUIStyle(GUI.skin.label) {padding = new RectOffset(10, 10, 2, 2)};
-
-						EditorGUI.LabelField(_multiColumnHeader.GetCellRect(visibleColumnIndex, columnRect), new GUIContent(Backend.Data[x].Data[Backend.Keys[a]]), nameFieldGUIStyle);
-						columnIndex++;
+						DrawCell(columnIndex, rowRect, new GUIContent(Backend.Data[x].Data[key]));
 					}
+
+					columnIndex++;
 				}
-				
 			}
 
 			GUI.EndScrollView(true);
+		}
+
+		private bool IsRowVisible(string key, CultureInfo cultureInfo, string value)
+		{
+			if (string.IsNullOrEmpty(_searchText))
+			{
+				return true;
+			}
+
+			string[] keywords = _searchText.Split(new[]{':'}, 2);
+
+			if (keywords[0] == "key")
+			{
+				return key.Contains(_searchText, StringComparison.CurrentCultureIgnoreCase);
+			}
+
+			if (keywords.Length > 1 && cultureInfo.TwoLetterISOLanguageName == keywords[0])
+			{
+				return value.Contains(keywords[1], StringComparison.CurrentCultureIgnoreCase);
+			}
+
+			return key.Contains(_searchText, StringComparison.CurrentCultureIgnoreCase) || value.Contains(_searchText, StringComparison.CurrentCultureIgnoreCase);
+		}
+		
+		private static void UseMainRectHeight(ref Rect rect, float height)
+		{
+			Vector2 rectPosition = rect.position;
+			rectPosition.y += height;
+			rect.height -= EditorGUIUtility.singleLineHeight;
+			rect.position = rectPosition;
+		}
+
+		private void DrawCell(int columnIndex, Rect rowRect, GUIContent content)
+		{
+			int visibleColumnIndex = _multiColumnHeader.GetVisibleColumnIndex(columnIndex);
+
+			Rect columnRect = _multiColumnHeader.GetColumnRect(visibleColumnIndex);
+
+			columnRect.y = rowRect.y;
+
+			EditorGUI.LabelField(_multiColumnHeader.GetCellRect(visibleColumnIndex, columnRect), content, _skin.CellStyle);
+		}
+
+		public void Start()
+		{
+			_skin = new WindowSkin();
+			
+			_searchBar = new SearchField {autoSetFocusOnFindCommand = true};
+			
+			_columns.Add(new MultiColumnHeaderState.Column
+			{
+				autoResize = true,
+				minWidth = 50,
+				canSort = false,
+				headerTextAlignment = TextAlignment.Left,
+				headerContent = new GUIContent("Key"),
+				allowToggleVisibility = false
+			});
+
+			foreach (CultureInfo x in Backend.Languages)
+			{
+				_columns.Add(new MultiColumnHeaderState.Column
+				{
+					autoResize = true,
+					minWidth = 50,
+					canSort = false,
+					headerTextAlignment = TextAlignment.Left,
+					headerContent = new GUIContent(x.Name)
+				});
+			}
+
+			_multiColumnHeaderState = new MultiColumnHeaderState(_columns.ToArray());
+			_multiColumnHeader = new MultiColumnHeader(_multiColumnHeaderState) {canSort = true};
+
+			_multiColumnHeader.ResizeToFit();
 		}
 	}
 }

@@ -1,53 +1,43 @@
 ﻿using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
-using SimpleLocalizationSystem.Common;
+using System.Linq;
 using SimpleLocalizationSystem.Common.Data;
 using SimpleLocalizationSystem.Editor.ProjectSettings;
 using UnityEditor;
+using UnityEngine;
 
 namespace SimpleLocalizationSystem.Editor
 {
 	public class Backend
 	{
-		public readonly Dictionary<CultureInfo, string> _localeFileByCultureInfo = new Dictionary<CultureInfo, string>();
 		public List<string> Keys = new List<string>();
-		public List<CultureInfo> Languages = new List<CultureInfo>();
-		public Dictionary<CultureInfo, LocalizationData> Data = new Dictionary<CultureInfo, LocalizationData>();
+		public List<CultureInfo> Languages => _simpleLocalizationSystem.Data.Keys.ToList();
+
+		public Dictionary<CultureInfo, LocalizationData> Data => _simpleLocalizationSystem.Data;
+		private readonly SimpleLocalizationSystem _simpleLocalizationSystem;
 
 		public Backend(int instanceID)
 		{
-			Keys.Add("NO_MSG");
-			Keys.Add("YES_MSG");
-			Keys.Add("MSG");
+			Keys.Clear();
+			
 			string assetPath = AssetDatabase.GetAssetPath(instanceID);
-			SimpleLocalizationSystem scriptableObject = AssetDatabase.LoadAssetAtPath<SimpleLocalizationSystem>(assetPath);
+			_simpleLocalizationSystem = AssetDatabase.LoadAssetAtPath<SimpleLocalizationSystem>(assetPath);
 
-			if (scriptableObject != null)
+			if (_simpleLocalizationSystem == null)
 			{
-				_localeFileByCultureInfo.Clear();
+				throw new MissingReferenceException($"Somehow cannot find SimpleLocalizationSystem asset with instance id = {instanceID}!");
+			}
 
-				foreach (string x in Directory.GetFiles(Settings.Get().GetSavePath()))
+			foreach (var x in Data)
+			{
+				foreach (var y in x.Value.Data)
 				{
-					if (x.Contains(Settings.Get().LocaleFilePrefix) && Path.GetExtension(x) == CommonUtils.GetLocaleExtension(Settings.LocalSerializationType))
+					if (!Keys.Contains(y.Key))
 					{
-						string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(x);
-						CultureInfo cultureInfo = new CultureInfo(fileNameWithoutExtension.Substring(fileNameWithoutExtension.Length - 2, 2));
-						_localeFileByCultureInfo.Add(cultureInfo, x);
-						Languages.Add(cultureInfo);
-						LoadLocale(cultureInfo);
-					}
+						Keys.Add(y.Key);
+					}					
 				}
 			}
-		}
-
-		private Settings Settings => Settings.Get();
-		public int LocaleFilesCount => _localeFileByCultureInfo.Count;
-
-		public void LoadLocale(CultureInfo cultureInfo)
-		{
-			var serializer = CommonUtils.GetSerializer(Settings.LocalSerializationType);
-			Data.Add(cultureInfo, serializer.Deserialize(File.ReadAllText(_localeFileByCultureInfo[cultureInfo])));
 		}
 	}
 }
