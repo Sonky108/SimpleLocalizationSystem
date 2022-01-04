@@ -12,8 +12,11 @@ namespace SimpleLocalizationSystem.Editor
 	public class Window : EditorWindow
 	{
 		private readonly List<MultiColumnHeaderState.Column> _columns = new List<MultiColumnHeaderState.Column>();
+		private readonly float _bottomAreaHeight = 100;
 		private MultiColumnHeader _multiColumnHeader;
 		private MultiColumnHeaderState _multiColumnHeaderState;
+		private readonly float _newKeyBarHeight = 25f;
+		private string _newKeyText;
 		private Vector2 _scrollPosition;
 		private SearchField _searchBar;
 		private string _searchText;
@@ -26,6 +29,45 @@ namespace SimpleLocalizationSystem.Editor
 
 			DrawToolbar(ref windowRect);
 			DrawLocaleScrollArea(ref windowRect);
+			DrawBottomArea(ref windowRect);
+		}
+
+		private void DrawBottomArea(ref Rect rect)
+		{
+			GUI.Box(rect, "", _skin.BottomAreaStyle);
+			DrawNewKeyArea(ref rect);
+
+			//make common rect
+			Rect buttonRect = new Rect(rect) {y = rect.height / 2f + rect.y - 15, height = 30, width = 150, x = rect.width - 150};
+
+			if (GUI.Button(buttonRect, "Export"))
+			{
+				Backend.Export();
+			}
+		}
+
+		private void DrawNewKeyArea(ref Rect windowRect)
+		{
+			Rect newKeyRect = new Rect(windowRect) {height = _newKeyBarHeight};
+
+			newKeyRect.width -= _newKeyBarHeight;
+			newKeyRect.x += _newKeyBarHeight;
+
+			UseMainRectHeight(ref windowRect, newKeyRect.height);
+
+			_newKeyText = GUI.TextField(newKeyRect, _newKeyText);
+
+			newKeyRect.width = _newKeyBarHeight;
+			newKeyRect.height = _newKeyBarHeight;
+			newKeyRect.x = 0;
+
+			if (GUI.Button(newKeyRect, _skin.AddButton))
+			{
+				if (Backend.TryAddKey(_newKeyText))
+				{
+					_newKeyText = "";
+				}
+			}
 		}
 
 		private void DrawToolbar(ref Rect rect)
@@ -41,11 +83,7 @@ namespace SimpleLocalizationSystem.Editor
 		{
 			float columnHeight = EditorGUIUtility.singleLineHeight;
 
-			//header
-			Rect columnRectPrototype = new Rect(rect)
-			{
-				height = columnHeight,
-			};
+			Rect columnRectPrototype = new Rect(rect) {height = columnHeight,};
 
 			_multiColumnHeader.OnGUI(columnRectPrototype, _scrollPosition.x);
 
@@ -53,17 +91,20 @@ namespace SimpleLocalizationSystem.Editor
 
 			int visibleRows = -1;
 
-			Rect viewRect = new Rect(rect)
-			{
-				width = _columns.Sum(column => column.width), 
-				height = Backend.Keys.Count * EditorGUIUtility.singleLineHeight
-			};
+			Rect contentRect = new Rect(rect) {width = _columns.Sum(column => column.width), height = Backend.Keys.Count * EditorGUIUtility.singleLineHeight};
 
-			_scrollPosition = GUI.BeginScrollView(rect, _scrollPosition, viewRect);
+			Rect scrollRect = new Rect(rect) {height = rect.height - _bottomAreaHeight};
+
+			if (scrollRect.height <= 0)
+			{
+				return;
+			}
+
+			_scrollPosition = GUI.BeginScrollView(scrollRect, _scrollPosition, contentRect);
 
 			foreach (string key in Backend.Keys)
 			{
-				var isRowVisible = Backend.Languages.All(x => IsRowVisible(key, x, Backend.Data[x].Data[key]));
+				bool isRowVisible = Backend.Languages.All(x => IsRowVisible(key, x, Backend.Data[x].Data[key]));
 
 				if (isRowVisible)
 				{
@@ -73,7 +114,7 @@ namespace SimpleLocalizationSystem.Editor
 				{
 					continue;
 				}
-				
+
 				Rect rowRect = new Rect(columnRectPrototype);
 
 				rowRect.y += columnHeight * (visibleRows + 1);
@@ -101,6 +142,8 @@ namespace SimpleLocalizationSystem.Editor
 			}
 
 			GUI.EndScrollView(true);
+
+			UseMainRectHeight(ref rect, scrollRect.height);
 		}
 
 		private bool IsRowVisible(string key, CultureInfo cultureInfo, string value)
@@ -110,7 +153,7 @@ namespace SimpleLocalizationSystem.Editor
 				return true;
 			}
 
-			string[] keywords = _searchText.Split(new[]{':'}, 2);
+			string[] keywords = _searchText.Split(new[] {':'}, 2);
 
 			if (keywords[0] == "key")
 			{
@@ -124,12 +167,12 @@ namespace SimpleLocalizationSystem.Editor
 
 			return key.Contains(_searchText, StringComparison.CurrentCultureIgnoreCase) || value.Contains(_searchText, StringComparison.CurrentCultureIgnoreCase);
 		}
-		
+
 		private static void UseMainRectHeight(ref Rect rect, float height)
 		{
 			Vector2 rectPosition = rect.position;
 			rectPosition.y += height;
-			rect.height -= EditorGUIUtility.singleLineHeight;
+			rect.height -= height;
 			rect.position = rectPosition;
 		}
 
@@ -146,10 +189,11 @@ namespace SimpleLocalizationSystem.Editor
 
 		public void Start()
 		{
+			Backend.Error += OnError;
 			_skin = new WindowSkin();
-			
+
 			_searchBar = new SearchField {autoSetFocusOnFindCommand = true};
-			
+
 			_columns.Add(new MultiColumnHeaderState.Column
 			{
 				autoResize = true,
@@ -176,6 +220,11 @@ namespace SimpleLocalizationSystem.Editor
 			_multiColumnHeader = new MultiColumnHeader(_multiColumnHeaderState) {canSort = true};
 
 			_multiColumnHeader.ResizeToFit();
+		}
+
+		private void OnError(int obj)
+		{
+			Debug.LogError(obj);
 		}
 	}
 }

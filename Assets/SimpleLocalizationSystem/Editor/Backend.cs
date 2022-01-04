@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using SimpleLocalizationSystem.Common.Data;
-using SimpleLocalizationSystem.Editor.ProjectSettings;
 using UnityEditor;
 using UnityEngine;
 
@@ -39,5 +39,26 @@ namespace SimpleLocalizationSystem.Editor
 				}
 			}
 		}
+
+		public void Export()
+		{
+			_simpleLocalizationSystem.Export();
+		}
+
+		public bool TryAddKey(string newKeyText)
+		{
+			int resultCode = _simpleLocalizationSystem.TryAddNewKey(newKeyText);
+
+			if (Result.Succeeded(resultCode))
+			{
+				Keys.Add(newKeyText);
+				return true;
+			}
+
+			Error?.Invoke(resultCode);
+			return false;
+		}
+
+		public event Action<int> Error;
 	}
 }
