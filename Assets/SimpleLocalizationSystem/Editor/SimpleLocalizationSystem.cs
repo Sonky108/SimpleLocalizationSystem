@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -14,10 +15,69 @@ namespace SimpleLocalizationSystem.Editor
 {
 	[CreateAssetMenu(menuName = "Simple Localization System/Translation", fileName = "Simple Localization System")]
 	public class SimpleLocalizationSystem : ScriptableObject, ISerializationCallbackReceiver
-	{ 
-		public Dictionary<CultureInfo, LocalizationData> Data = new Dictionary<CultureInfo, LocalizationData>();
+	{
 		[SerializeField] private List<TranslationEntry> _serializedData = new List<TranslationEntry>();
-		
+		public Dictionary<CultureInfo, LocalizationData> Data = new Dictionary<CultureInfo, LocalizationData>();
+
+		public void OnBeforeSerialize()
+		{
+			Debug.Log("Before Serialize");
+
+			foreach (var x in Data)
+			{
+				if (_serializedData.Count != Data.Count && _serializedData.Count(y => y.Language == x.Key.TwoLetterISOLanguageName) == 0)
+				{
+					var data = new List<TranslationData>();
+
+					foreach (var key in x.Value.Data)
+					{
+						data.Add(new TranslationData {Key = key.Key, Value = key.Value,});
+					}
+
+					_serializedData.Add(new TranslationEntry {Data = data, Language = x.Key.TwoLetterISOLanguageName});
+				}
+
+				for (int i = _serializedData.Count - 1; i >= 0; i--)
+				{
+					TranslationEntry y = _serializedData[i];
+
+					if (y.Language == x.Key.TwoLetterISOLanguageName)
+					{
+						foreach (var key in x.Value.Data)
+						{
+							TranslationData entry = y.Data.FirstOrDefault(z => z.Key == key.Key);
+
+							if (entry == null)
+							{
+								y.Data.Add(new TranslationData {Key = key.Key, Value = key.Value,});
+							}
+							else
+							{
+								entry.Value = key.Value;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		public void OnAfterDeserialize()
+		{
+			Debug.Log("After Deserialize");
+			Data.Clear();
+
+			foreach (TranslationEntry x in _serializedData)
+			{
+				CultureInfo cultureInfo = new CultureInfo(x.Language);
+				Data.Add(cultureInfo, new LocalizationData());
+
+				foreach (TranslationData y in x.Data)
+				{
+					Data[cultureInfo].Data.Add(y.Key, y.Value);
+				}
+			}
+		}
+
 		public void Export()
 		{
 			foreach (var x in Data)
@@ -55,85 +115,41 @@ namespace SimpleLocalizationSystem.Editor
 			{
 				x.Value.Data.Add(key, "");
 			}
-			EditorUtility.SetDirty(this);
-			
+
 			return Result.OK;
 		}
 
-		public void OnBeforeSerialize()
+		public int AddNewLanguage(string code)
 		{
-			Debug.Log("Before Serialize");
+			CultureInfo cultureInfo;
 
-			foreach (var x in Data)
+			try
 			{
-				if (_serializedData.Count == 0)
-				{
-					var data = new List<TranslationData>();
-						
-					foreach(var key in x.Value.Data)
-					{
-						data.Add(new TranslationData()
-						{
-							Key = key.Key,
-							Value = key.Value,
-						});
-					}
-						
-					_serializedData.Add(new TranslationEntry() {Data = data, Language = x.Key.TwoLetterISOLanguageName});
-				}
-				
-				for (int i = _serializedData.Count - 1; i >= 0; i--)
-				{
-					var y = _serializedData[i];
+				cultureInfo = new CultureInfo(code);
+			}
+			catch (CultureNotFoundException e)
+			{
+				return Result.ERROR_CULTURE_NOT_FOUND;
+			}
 
-					if (y.Language == x.Key.TwoLetterISOLanguageName)
-					{
-						foreach(var key in x.Value.Data)
-						{
-							var entry = y.Data.FirstOrDefault(z => z.Key == key.Key);
-							
-							if (entry == null)
-							{
-								y.Data.Add(new TranslationData()
-								{
-									Key = key.Key,
-									Value = key.Value,
-								});
-							}
-							else
-							{
-								entry.Value = key.Value;
-							}
-						}
-					}
-					else
-					{
-						
-					}
+			if (Data.ContainsKey(cultureInfo))
+			{
+				return Result.ERROR_LANGUAGE_ALREADY_EXISTS;
+			}
+
+			var data = new Dictionary<string, string>();
+
+			if (Data.Count != 0)
+			{
+				foreach (var x in Data.First().Value.Data)
+				{
+					data.Add(x.Key, "");
 				}
 			}
-		}
 
-		public void OnAfterDeserialize()
-		{
-			Debug.Log("After Deserialize");
-			Data.Clear();
+			Data.Add(cultureInfo, new LocalizationData {Data = data});
 
-			foreach (var x in _serializedData)
-			{
-				CultureInfo cultureInfo = new CultureInfo(x.Language);
-				Data.Add(cultureInfo, new LocalizationData());
-
-				foreach (var y in x.Data)
-				{
-					Data[cultureInfo].Data.Add(y.Key, y.Value);
-				}
-			}
-		}
-
-		public void AddNewLanguage(string code)
-		{
-			Data.Add(new CultureInfo(code), new LocalizationData());
+			return Result.OK;
 		}
 	}
 }

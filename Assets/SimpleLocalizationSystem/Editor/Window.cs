@@ -22,6 +22,8 @@ namespace SimpleLocalizationSystem.Editor
 		private string _searchText;
 		private IWindowSkin _skin;
 		public Backend Backend;
+		private float _buttonWidth = 150;
+		private float _buttonHeight = 30;
 
 		private void OnGUI()
 		{
@@ -42,16 +44,27 @@ namespace SimpleLocalizationSystem.Editor
 			}
 
 			//make common rect
-			Rect buttonRect = new Rect(rect) {y = rect.height / 2f + rect.y - 15, height = 30, width = 150, x = rect.width - 150};
+			Rect buttonRect = new Rect(rect) {y = rect.height / 2f + rect.y - _buttonHeight / 2, height = _buttonHeight, width = _buttonWidth, x = rect.width - _buttonWidth};
 
-			// if (GUI.Button(buttonRect, "Add language"))
-			// {
-			// 	Backend.AddNewLanguage("pl");
-			// }
-			
 			if (GUI.Button(buttonRect, "Export"))
 			{
 				Backend.Export();
+			}
+
+			buttonRect.x -= _buttonWidth;
+			
+			if (GUI.Button(buttonRect, "Add new language"))
+			{
+				OnAddNewLanguage("de");
+			}
+		}
+
+		private void OnAddNewLanguage(string name)
+		{
+			if (Backend.AddNewLanguage(name))
+			{
+				AddLanguageHeader(name);
+				OnHeaderReady();
 			}
 		}
 
@@ -215,20 +228,29 @@ namespace SimpleLocalizationSystem.Editor
 
 			foreach (CultureInfo x in Backend.Languages)
 			{
-				_columns.Add(new MultiColumnHeaderState.Column
-				{
-					autoResize = true,
-					minWidth = 50,
-					canSort = false,
-					headerTextAlignment = TextAlignment.Left,
-					headerContent = new GUIContent(x.Name)
-				});
+				AddLanguageHeader(x.Name);
 			}
 
+			OnHeaderReady();
+		}
+
+		private void OnHeaderReady()
+		{
 			_multiColumnHeaderState = new MultiColumnHeaderState(_columns.ToArray());
 			_multiColumnHeader = new MultiColumnHeader(_multiColumnHeaderState) {canSort = true};
-
 			_multiColumnHeader.ResizeToFit();
+		}
+
+		private void AddLanguageHeader(string name)
+		{
+			_columns.Add(new MultiColumnHeaderState.Column
+			{
+				autoResize = true,
+				minWidth = 50,
+				canSort = false,
+				headerTextAlignment = TextAlignment.Left,
+				headerContent = new GUIContent(name)
+			});
 		}
 
 		private void OnError(int obj)

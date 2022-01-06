@@ -65,9 +65,20 @@ namespace SimpleLocalizationSystem.Editor
 
 		public event Action<int> Error;
 
-		public void AddNewLanguage(string code)
+		public bool AddNewLanguage(string code)
 		{
-			_simpleLocalizationSystem.AddNewLanguage(code);
+			int resultCode = _simpleLocalizationSystem.AddNewLanguage(code);
+
+			if (Result.Succeeded((resultCode)))
+			{
+				var ee = new SerializedObject(_simpleLocalizationSystem);
+				ee.ApplyModifiedProperties();
+				AssetDatabase.SaveAssets();
+				return true;
+			}
+			
+			Error?.Invoke(resultCode);
+			return false;
 		}
 	}
 }
