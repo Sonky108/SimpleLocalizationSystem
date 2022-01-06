@@ -12,3 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: be438a31884d40b59f1b7ffa9bd102fe, type: 3}
   m_Name: Simple Localization System
   m_EditorClassIdentifier: 
+  _serializedData:
+  - Language: pl
+    Data:
+    - Key: ddw
+      Value: 
+    - Key: eew
+      Value: 
+    - Key: HejCoTam
+      Value: 

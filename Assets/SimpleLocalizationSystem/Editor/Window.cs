@@ -35,11 +35,20 @@ namespace SimpleLocalizationSystem.Editor
 		private void DrawBottomArea(ref Rect rect)
 		{
 			GUI.Box(rect, "", _skin.BottomAreaStyle);
-			DrawNewKeyArea(ref rect);
+
+			if (Backend.Languages.Count != 0)
+			{
+				DrawNewKeyArea(ref rect);
+			}
 
 			//make common rect
 			Rect buttonRect = new Rect(rect) {y = rect.height / 2f + rect.y - 15, height = 30, width = 150, x = rect.width - 150};
 
+			// if (GUI.Button(buttonRect, "Add language"))
+			// {
+			// 	Backend.AddNewLanguage("pl");
+			// }
+			
 			if (GUI.Button(buttonRect, "Export"))
 			{
 				Backend.Export();
