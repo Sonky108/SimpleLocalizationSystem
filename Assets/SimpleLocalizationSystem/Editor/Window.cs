@@ -24,6 +24,7 @@ namespace SimpleLocalizationSystem.Editor
 		public Backend Backend;
 		private float _buttonWidth = 150;
 		private float _buttonHeight = 30;
+		private int _index;
 
 		private void OnGUI()
 		{
@@ -43,7 +44,6 @@ namespace SimpleLocalizationSystem.Editor
 				DrawNewKeyArea(ref rect);
 			}
 
-			//make common rect
 			Rect buttonRect = new Rect(rect) {y = rect.height / 2f + rect.y - _buttonHeight / 2, height = _buttonHeight, width = _buttonWidth, x = rect.width - _buttonWidth};
 
 			if (GUI.Button(buttonRect, "Export"))
@@ -52,10 +52,11 @@ namespace SimpleLocalizationSystem.Editor
 			}
 
 			buttonRect.x -= _buttonWidth;
-			
+
 			if (GUI.Button(buttonRect, "Add new language"))
 			{
-				OnAddNewLanguage("de");
+				var foo = new CulturesDropdown(new AdvancedDropdownState(), Backend.Languages, OnAddNewLanguage);
+				foo.Show(buttonRect);
 			}
 		}
 
@@ -228,7 +229,7 @@ namespace SimpleLocalizationSystem.Editor
 
 			foreach (CultureInfo x in Backend.Languages)
 			{
-				AddLanguageHeader(x.Name);
+				AddLanguageHeader(x.DisplayName);
 			}
 
 			OnHeaderReady();

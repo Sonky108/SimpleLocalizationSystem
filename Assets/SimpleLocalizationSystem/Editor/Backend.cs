@@ -43,7 +43,6 @@ namespace SimpleLocalizationSystem.Editor
 		public void Export()
 		{
 			_simpleLocalizationSystem.Export();
-			
 		}
 
 		public bool TryAddKey(string newKeyText)
@@ -52,9 +51,6 @@ namespace SimpleLocalizationSystem.Editor
 
 			if (Result.Succeeded(resultCode))
 			{
-				var ee = new SerializedObject(_simpleLocalizationSystem);
-				ee.ApplyModifiedProperties();
-				AssetDatabase.SaveAssets();
 				Keys.Add(newKeyText);
 				return true;
 			}
@@ -71,9 +67,6 @@ namespace SimpleLocalizationSystem.Editor
 
 			if (Result.Succeeded((resultCode)))
 			{
-				var ee = new SerializedObject(_simpleLocalizationSystem);
-				ee.ApplyModifiedProperties();
-				AssetDatabase.SaveAssets();
 				return true;
 			}
 			
