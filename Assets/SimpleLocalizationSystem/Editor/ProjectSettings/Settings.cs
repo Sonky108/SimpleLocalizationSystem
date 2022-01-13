@@ -9,6 +9,7 @@ namespace SimpleLocalizationSystem.Editor.ProjectSettings
 	{
 		private const string SETTINGS_PATH = "Assets/SimpleLocalizationSystem/Editor/Settings.asset";
 		private static Settings _settings;
+		public SimpleLocalizationSystem MainAsset;
 		public Storage Storage;
 		public LocalSerializationType LocalSerializationType;
 		public RemoteStorageProvider RemoteStorageProvider;

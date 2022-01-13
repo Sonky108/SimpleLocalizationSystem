@@ -27,12 +27,13 @@ namespace SimpleLocalizationSystem.Editor.ProjectSettings
 				             {
 					             SerializedObject settings = Settings.GetSerializedSettings();
 					             Settings target = (Settings) settings.targetObject;
-					             SerializedProperty serializedStorageProperty = settings.FindProperty("Storage");
+					             SerializedProperty serializedStorageProperty = settings.FindProperty(nameof(target.Storage));
+					             EditorGUILayout.PropertyField(settings.FindProperty(nameof(target.MainAsset)), new GUIContent("Asset"));
 					             EditorGUILayout.PropertyField(serializedStorageProperty, new GUIContent("Storage"));
 
 					             _customStorageDrawers[(Storage) serializedStorageProperty.enumValueIndex].Draw(settings);
 					             
-					             EditorGUILayout.PropertyField(settings.FindProperty("LocaleFilePrefix"), new GUIContent("Locale file prefix"));
+					             EditorGUILayout.PropertyField(settings.FindProperty(nameof(target.LocaleFilePrefix)), new GUIContent("Locale file prefix"));
 
 					             settings.ApplyModifiedProperties();
 				             },

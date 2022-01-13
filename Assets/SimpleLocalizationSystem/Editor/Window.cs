@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using SimpleLocalizationSystem.Editor.ProjectSettings;
 using SimpleLocalizationSystem.Editor.Utils;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
@@ -11,23 +12,39 @@ namespace SimpleLocalizationSystem.Editor
 {
 	public class Window : EditorWindow
 	{
-		private readonly List<MultiColumnHeaderState.Column> _columns = new List<MultiColumnHeaderState.Column>();
 		private readonly float _bottomAreaHeight = 100;
+		private readonly List<MultiColumnHeaderState.Column> _columns = new List<MultiColumnHeaderState.Column>();
+		private readonly float _newKeyBarHeight = 25f;
+		private readonly float _buttonHeight = 30;
+		private readonly float _buttonWidth = 150;
+		private bool _editorQuitting;
+		private int _index;
 		private MultiColumnHeader _multiColumnHeader;
 		private MultiColumnHeaderState _multiColumnHeaderState;
-		private readonly float _newKeyBarHeight = 25f;
 		private string _newKeyText;
 		private Vector2 _scrollPosition;
 		private SearchField _searchBar;
 		private string _searchText;
 		private IWindowSkin _skin;
 		public Backend Backend;
-		private float _buttonWidth = 150;
-		private float _buttonHeight = 30;
-		private int _index;
+
+		private void OnDestroy()
+		{
+			if (Backend != null && !_editorQuitting)
+			{
+				Backend.Error -= OnError;
+				Backend.Clear();
+			}
+		}
 
 		private void OnGUI()
 		{
+			if (Backend == null && Backend.CanRestore())
+			{
+				Backend = Backend.Restore();
+				Start();
+			}
+
 			Rect windowRect = new Rect {x = 0, y = 0, width = position.width, height = position.height};
 
 			DrawToolbar(ref windowRect);
@@ -55,7 +72,7 @@ namespace SimpleLocalizationSystem.Editor
 
 			if (GUI.Button(buttonRect, "Add new language"))
 			{
-				var foo = new CulturesDropdown(new AdvancedDropdownState(), Backend.Languages, OnAddNewLanguage);
+				CulturesDropdown foo = new CulturesDropdown(new AdvancedDropdownState(), Backend.Languages, OnAddNewLanguage);
 				foo.Show(buttonRect);
 			}
 		}
@@ -213,10 +230,12 @@ namespace SimpleLocalizationSystem.Editor
 		public void Start()
 		{
 			Backend.Error += OnError;
+			EditorApplication.wantsToQuit += OnEditorWantsToQuit;
+
 			_skin = new WindowSkin();
 
 			_searchBar = new SearchField {autoSetFocusOnFindCommand = true};
-
+			_columns.Clear();
 			_columns.Add(new MultiColumnHeaderState.Column
 			{
 				autoResize = true,
@@ -233,6 +252,12 @@ namespace SimpleLocalizationSystem.Editor
 			}
 
 			OnHeaderReady();
+		}
+
+		private bool OnEditorWantsToQuit()
+		{
+			_editorQuitting = true;
+			return true;
 		}
 
 		private void OnHeaderReady()

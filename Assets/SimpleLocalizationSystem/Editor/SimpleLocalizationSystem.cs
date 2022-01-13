@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -8,7 +7,6 @@ using SimpleLocalizationSystem.Common;
 using SimpleLocalizationSystem.Common.Data;
 using SimpleLocalizationSystem.Common.Serialization;
 using SimpleLocalizationSystem.Editor.ProjectSettings;
-using UnityEditor;
 using UnityEngine;
 
 namespace SimpleLocalizationSystem.Editor
@@ -21,8 +19,6 @@ namespace SimpleLocalizationSystem.Editor
 
 		public void OnBeforeSerialize()
 		{
-			Debug.Log("Before Serialize");
-
 			foreach (var x in Data)
 			{
 				if (_serializedData.Count != Data.Count && _serializedData.Count(y => y.Language == x.Key.TwoLetterISOLanguageName) == 0)
@@ -63,7 +59,6 @@ namespace SimpleLocalizationSystem.Editor
 
 		public void OnAfterDeserialize()
 		{
-			Debug.Log("After Deserialize");
 			Data.Clear();
 
 			foreach (TranslationEntry x in _serializedData)

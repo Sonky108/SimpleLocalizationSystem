@@ -8,8 +8,7 @@ namespace SimpleLocalizationSystem.Editor
 		[OnOpenAsset(1)]
 		public static bool OnOpenAsset(int instanceID, int line)
 		{
-			string assetPath = AssetDatabase.GetAssetPath(instanceID);
-			SimpleLocalizationSystem scriptableObject = AssetDatabase.LoadAssetAtPath<SimpleLocalizationSystem>(assetPath);
+			SimpleLocalizationSystem scriptableObject = EditorUtility.InstanceIDToObject(instanceID) as SimpleLocalizationSystem;
 
 			if (scriptableObject != null)
 			{
@@ -20,7 +19,7 @@ namespace SimpleLocalizationSystem.Editor
 				window.Start();
 				return true;
 			}
-
+			
 			return false;
 		}
 	}
