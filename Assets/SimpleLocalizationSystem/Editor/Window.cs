@@ -27,6 +27,10 @@ namespace SimpleLocalizationSystem.Editor
 		private string _searchText;
 		private IWindowSkin _skin;
 		public Backend Backend;
+		private string _lastClickedKey;
+		private CultureInfo _lastClickedLanguage;
+		private string _newKey;
+		private string _oldKey;
 
 		private void OnDestroy()
 		{
@@ -45,11 +49,49 @@ namespace SimpleLocalizationSystem.Editor
 				Start();
 			}
 
+			if (focusedWindow == this)
+			{
+				Event current = Event.current;
+
+				ProcessEvents(current);
+			}
+			
 			Rect windowRect = new Rect {x = 0, y = 0, width = position.width, height = position.height};
 
 			DrawToolbar(ref windowRect);
 			DrawLocaleScrollArea(ref windowRect);
 			DrawBottomArea(ref windowRect);
+		}
+
+		private void ProcessEvents(Event current)
+		{
+			var eventUsed = false;
+			if (current.Equals(Event.KeyboardEvent(KeyCode.Escape.ToString())))
+			{
+				_lastClickedKey = null;
+				_lastClickedLanguage = null;
+				eventUsed = true;
+			}
+			
+			if (current.Equals(Event.KeyboardEvent(KeyCode.Return.ToString())))
+			{
+				if (_lastClickedKey != null && _lastClickedLanguage == null)
+				{
+					Backend.TryUpdateKey(_newKey, _oldKey);
+					_newKey = "";
+					_oldKey = "";
+					GUI.FocusControl("");
+				}
+				
+				_lastClickedKey = null;
+				_lastClickedLanguage = null;
+				eventUsed = true;
+			}
+
+			if (eventUsed)
+			{
+				current.Use();
+			}
 		}
 
 		private void DrawBottomArea(ref Rect rect)
@@ -165,7 +207,7 @@ namespace SimpleLocalizationSystem.Editor
 
 				if (_multiColumnHeader.IsColumnVisible(columnIndex))
 				{
-					DrawCell(columnIndex, rowRect, new GUIContent(key));
+					DrawCell(columnIndex, rowRect, key);
 				}
 
 				columnIndex++;
@@ -174,7 +216,7 @@ namespace SimpleLocalizationSystem.Editor
 				{
 					if (_multiColumnHeader.IsColumnVisible(columnIndex))
 					{
-						DrawCell(columnIndex, rowRect, new GUIContent(Backend.Data[x].Data[key]));
+						DrawCell(columnIndex, rowRect, key, x);
 					}
 
 					columnIndex++;
@@ -216,7 +258,7 @@ namespace SimpleLocalizationSystem.Editor
 			rect.position = rectPosition;
 		}
 
-		private void DrawCell(int columnIndex, Rect rowRect, GUIContent content)
+		private void DrawCell(int columnIndex, Rect rowRect, string key, CultureInfo language = null)
 		{
 			int visibleColumnIndex = _multiColumnHeader.GetVisibleColumnIndex(columnIndex);
 
@@ -224,7 +266,29 @@ namespace SimpleLocalizationSystem.Editor
 
 			columnRect.y = rowRect.y;
 
-			EditorGUI.LabelField(_multiColumnHeader.GetCellRect(visibleColumnIndex, columnRect), content, _skin.CellStyle);
+			GUIContent guiContent = new GUIContent(language == null ? key : Backend.Data[language].Data[key]);
+
+			if (_lastClickedKey == key && Equals(_lastClickedLanguage, language))
+			{
+				if (language == null)
+				{
+					_oldKey = key;
+					_newKey = EditorGUI.TextField(_multiColumnHeader.GetCellRect(visibleColumnIndex, columnRect), _newKey);
+				}
+				else
+				{
+					Backend.Data[language].Data[key] = EditorGUI.TextField(_multiColumnHeader.GetCellRect(visibleColumnIndex, columnRect), Backend.Data[language].Data[key]);
+				}
+			}
+			else
+			{
+				if (GUI.Button(_multiColumnHeader.GetCellRect(visibleColumnIndex, columnRect), guiContent, _skin.CellStyle))
+				{
+					_lastClickedKey = key;
+					_lastClickedLanguage = language;
+					GUI.FocusControl("");
+				}
+			}
 		}
 
 		public void Start()
@@ -253,7 +317,7 @@ namespace SimpleLocalizationSystem.Editor
 
 			OnHeaderReady();
 		}
-
+		
 		private bool OnEditorWantsToQuit()
 		{
 			_editorQuitting = true;

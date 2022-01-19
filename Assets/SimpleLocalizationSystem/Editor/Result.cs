@@ -6,6 +6,7 @@
 		public const int ERROR_KEY_ALREADY_EXIST = -1;
 		public const int ERROR_LANGUAGE_ALREADY_EXISTS = -2;
 		public const int ERROR_CULTURE_NOT_FOUND = -3;
+		public const int ERROR_KEY_NOT_FOUND = -4;
 
 		public static bool Succeeded(int result)
 		{

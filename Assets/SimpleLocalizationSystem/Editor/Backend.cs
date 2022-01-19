@@ -93,6 +93,21 @@ namespace SimpleLocalizationSystem.Editor
 			return false;
 		}
 
+		public bool TryUpdateKey(string newKey, string oldKey)
+		{
+			int resultCode = _simpleLocalizationSystem.ChangeKey(newKey, oldKey);
+
+			if (Result.Succeeded(resultCode))
+			{
+				Keys.Add(newKey);
+				Keys.Remove(oldKey);
+				return true;
+			}
+
+			Error?.Invoke(resultCode);
+			return false;
+		}
+		
 		public event Action<int> Error;
 
 		public bool AddNewLanguage(string code)

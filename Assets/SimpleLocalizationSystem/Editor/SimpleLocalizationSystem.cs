@@ -114,6 +114,35 @@ namespace SimpleLocalizationSystem.Editor
 			return Result.OK;
 		}
 
+		public int ChangeKey(string newKey, string oldKey)
+		{
+			bool containsKey = Data.SelectMany(x => x.Value.Data).Count(y => y.Key == newKey) > 0;
+
+			if (containsKey)
+			{
+				return Result.ERROR_KEY_ALREADY_EXIST;
+			}
+
+			foreach (var x in Data)
+			{
+				var translation = x.Value.Data[oldKey];
+				x.Value.Data.Add(newKey, translation);
+				x.Value.Data.Remove(oldKey);
+			}
+
+			return Result.OK;
+		}
+
+		public int DeleteKey(string key)
+		{
+			foreach (var x in Data)
+			{
+				x.Value.Data.Remove(key);
+			}
+			
+			return Result.OK;
+		}
+		
 		public int AddNewLanguage(string code)
 		{
 			CultureInfo cultureInfo;
